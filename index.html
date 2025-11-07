@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 內容檢視工具</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: 'Noto Sans TC', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: #f5f5f5;
+      color: #222;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #eef2ff 0%, #f9fafb 100%);
+    }
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    header {
+      margin-bottom: 32px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: #1f2937;
+    }
+
+    p.description {
+      margin: 8px 0 0;
+      color: #4b5563;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid #e5e7eb;
+    }
+
+    label {
+      font-weight: 600;
+      color: #374151;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px dashed #c7d2fe;
+      border-radius: 12px;
+      background: #f9fafb;
+      cursor: pointer;
+    }
+
+    input[type="file"]:hover {
+      border-color: #818cf8;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .status.loading {
+      background: #eef2ff;
+      color: #3730a3;
+    }
+
+    .status.success {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .status.error {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .results {
+      margin-top: 32px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .steps {
+      margin: 0 0 24px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 12px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      color: #312e81;
+      background: #e0e7ff;
+    }
+
+    .file-info {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #1f2937;
+      font-size: 0.95rem;
+      display: none;
+    }
+
+    .ocr-toggle {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      color: #374151;
+    }
+
+    .ocr-toggle input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .source-badge {
+      margin-left: 8px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .source-badge.pdf {
+      background: #eef2ff;
+      color: #312e81;
+    }
+
+    .source-badge.ocr {
+      background: #ecfeff;
+      color: #065f46;
+    }
+
+    .page-block {
+      padding: 20px;
+      border-radius: 16px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    }
+
+    .page-title {
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #111827;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'Noto Sans TC', 'Segoe UI', sans-serif;
+      line-height: 1.6;
+    }
+
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      background: #4f46e5;
+      color: #fff;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    button.secondary {
+      background: #111827;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.15);
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 24px 16px 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>PDF 內容檢視工具</h1>
+      <p class="description">上傳 PDF 檔案後，系統會即時讀取並顯示每一頁的文字內容</p>
+    </header>
+
+    <section class="card">
+      <ol class="steps">
+        <li class="step-item">
+          <span class="step-number">1</span>
+          <span>點選下方按鈕選擇欲解析的 PDF 檔案</span>
+        </li>
+        <li class="step-item">
+          <span class="step-number">2</span>
+          <span>確認檔名與大小後，按「開始上傳並解析」</span>
+        </li>
+        <li class="step-item">
+          <span class="step-number">3</span>
+          <span>等待狀態顯示「上傳成功」，即會在下方看到文字內容</span>
+        </li>
+      </ol>
+
+      <label for="pdf-input">選擇 PDF 檔案</label>
+      <input id="pdf-input" type="file" accept="application/pdf" />
+      <div id="file-info" class="file-info"></div>
+      <div class="ocr-toggle">
+        <input type="checkbox" id="enable-ocr" checked />
+        <label for="enable-ocr">當此頁沒有可擷取文字時，自動使用影像 OCR（需網路，速度較慢）</label>
+      </div>
+      <div id="status" class="status">尚未選擇檔案</div>
+      <div class="actions">
+        <button id="process-btn" type="button" disabled>開始上傳並解析</button>
+        <button id="clear-btn" type="button" class="secondary">清除結果</button>
+      </div>
+    </section>
+
+    <section class="results" id="results" aria-live="polite"></section>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.2/dist/tesseract.min.js" integrity="sha512-kwcV5Avdjd8smmbf4OML59Rd561idC9R4pO+PaJBRU/jAgxbjAbYExIpYoyvqAVmvheC6fRJS+fZ1pXToNHRSQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const fileInput = document.getElementById('pdf-input');
+    const results = document.getElementById('results');
+    const statusBox = document.getElementById('status');
+    const fileInfoBox = document.getElementById('file-info');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const enableOcrCheckbox = document.getElementById('enable-ocr');
+    let selectedFile = null;
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const formatSize = (bytes) => {
+      if (!Number.isFinite(bytes)) return '未知大小';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let size = bytes;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+      }
+      return `${size.toFixed(1)} ${units[unitIndex]}`;
+    };
+
+    const setStatus = (message, type = 'info') => {
+      statusBox.textContent = message;
+      statusBox.classList.remove('error', 'loading', 'success');
+      if (type !== 'info') {
+        statusBox.classList.add(type);
+      }
+    };
+
+    const renderPageToCanvas = async (page, scale = 2) => {
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: context, viewport }).promise;
+      return canvas;
+    };
+
+    const extractTextFromPage = async (page, pageNumber) => {
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map(item => item.str).join(' ').trim();
+      if (text) {
+        return { text, source: 'pdf' };
+      }
+
+      if (!enableOcrCheckbox.checked) {
+        return { text: '', source: 'none' };
+      }
+
+      if (typeof Tesseract === 'undefined') {
+        console.warn('Tesseract.js 尚未載入，無法執行 OCR');
+        return { text: '', source: 'none' };
+      }
+
+      setStatus(`[OCR] 渲染第 ${pageNumber} 頁影像...`, 'loading');
+      const canvas = await renderPageToCanvas(page, 2);
+
+      try {
+        const result = await Tesseract.recognize(canvas, 'chi_tra+eng', {
+          logger: ({ status, progress }) => {
+            const percent = Number.isFinite(progress) ? ` ${Math.round(progress * 100)}%` : '';
+            setStatus(`[OCR] 第 ${pageNumber} 頁 ${status}${percent}`, 'loading');
+          }
+        });
+        return { text: (result?.data?.text || '').trim(), source: 'ocr' };
+      } catch (ocrError) {
+        console.error('OCR 失敗', ocrError);
+        return { text: '', source: 'none' };
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    };
+
+    const clearResults = () => {
+      results.innerHTML = '';
+      fileInput.value = '';
+      fileInfoBox.style.display = 'none';
+      fileInfoBox.textContent = '';
+      selectedFile = null;
+      processBtn.disabled = true;
+      setStatus('尚未選擇檔案');
+    };
+
+    clearBtn.addEventListener('click', clearResults);
+
+    fileInput.addEventListener('change', (event) => {
+      const [file] = event.target.files;
+      results.innerHTML = '';
+
+      if (!file) {
+        clearResults();
+        return;
+      }
+
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        clearResults();
+        setStatus('請選擇 PDF 檔案', 'error');
+        return;
+      }
+
+      selectedFile = file;
+      processBtn.disabled = false;
+      fileInfoBox.style.display = 'block';
+      fileInfoBox.textContent = `檔名：${file.name}｜大小：${formatSize(file.size)}`;
+      setStatus('檔案已選擇，請按「開始上傳並解析」');
+    });
+
+    const handleProcess = async () => {
+      if (!selectedFile) {
+        setStatus('尚未選擇檔案', 'error');
+        return;
+      }
+
+      processBtn.disabled = true;
+      fileInput.disabled = true;
+      results.innerHTML = '';
+      setStatus(`上傳中：${selectedFile.name}`, 'loading');
+
+      try {
+        const buffer = await selectedFile.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        setStatus(`上傳成功，開始解析共 ${pdf.numPages} 頁`, 'success');
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          setStatus(`解析第 ${i} / ${pdf.numPages} 頁...`, 'loading');
+          const page = await pdf.getPage(i);
+          const { text: extractedText, source } = await extractTextFromPage(page, i);
+
+          const pageBlock = document.createElement('article');
+          pageBlock.className = 'page-block';
+
+          const title = document.createElement('div');
+          title.className = 'page-title';
+          title.textContent = `第 ${i} 頁`;
+
+          if (source === 'pdf' || source === 'ocr') {
+            const badge = document.createElement('span');
+            badge.className = `source-badge ${source}`;
+            badge.textContent = source === 'ocr' ? 'OCR' : 'PDF 文字';
+            title.appendChild(badge);
+          }
+
+          const text = document.createElement('pre');
+          const fallbackMessage = enableOcrCheckbox.checked
+            ? '(此頁沒有偵測到文字，可能是掃描影像或影像品質不足)'
+            : '(此頁沒有偵測到文字，建議啟用 OCR 後再試一次)';
+          text.textContent = extractedText || fallbackMessage;
+
+          pageBlock.appendChild(title);
+          pageBlock.appendChild(text);
+          results.appendChild(pageBlock);
+        }
+
+        setStatus(`完成：共 ${pdf.numPages} 頁`, 'success');
+      } catch (error) {
+        console.error(error);
+        setStatus('讀取或解析失敗：' + error.message, 'error');
+      } finally {
+        processBtn.disabled = !selectedFile;
+        fileInput.disabled = false;
+      }
+    };
+
+    processBtn.addEventListener('click', handleProcess);
+  </script>
+</body>
+</html>
