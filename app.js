@@ -16,11 +16,19 @@
     fileInfo: document.getElementById('file-info'),
     processBtn: document.getElementById('process-btn'),
     clearBtn: document.getElementById('clear-btn'),
-    ocrToggle: document.getElementById('enable-ocr')
+    ocrToggle: document.getElementById('enable-ocr'),
+    exportBtn: document.getElementById('export-btn'),
+    toleranceInput: document.getElementById('tolerance-input'),
+    toleranceVal: document.getElementById('tolerance-val'),
+    ocrScaleInput: document.getElementById('ocr-scale-input'),
+    ocrScaleVal: document.getElementById('ocr-scale-val'),
+    ocrThresholdInput: document.getElementById('ocr-threshold-input'),
+    ocrThresholdVal: document.getElementById('ocr-threshold-val')
   };
 
   const state = {
-    selectedFile: null
+    selectedFile: null,
+    extractedTextBlocks: []
   };
 
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -50,6 +58,8 @@
   const resultsView = {
     clear() {
       ui.results.innerHTML = '';
+      state.extractedTextBlocks = [];
+      ui.exportBtn.disabled = true;
     },
     append({ pageNumber, text, source, ocrEnabled }) {
       const pageBlock = document.createElement('article');
@@ -72,6 +82,12 @@
       pageBlock.appendChild(title);
       pageBlock.appendChild(body);
       ui.results.appendChild(pageBlock);
+
+      const content = text || getFallbackMessage(ocrEnabled);
+      state.extractedTextBlocks.push(`--- 第 ${pageNumber} 頁 ---\n${content}\n`);
+      if (state.extractedTextBlocks.length > 0) {
+        ui.exportBtn.disabled = false;
+      }
     }
   };
 
@@ -95,11 +111,10 @@
 
   const normalizeLine = (line) => line.replace(/\s+/g, ' ').trim();
 
-  const buildReadableText = (items) => {
+  const buildReadableText = (items, tolerance = 4) => {
     const lines = [];
     let currentLine = [];
     let lastY = null;
-    const tolerance = 4;
 
     items.forEach((item) => {
       const value = item?.str;
@@ -153,7 +168,7 @@
     const imageData = context.getImageData(0, 0, width, height);
     const { data } = imageData;
     const contrast = 1.25;
-    const threshold = 175;
+    const threshold = parseInt(ui.ocrThresholdInput.value, 10) || 175;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -190,7 +205,8 @@
 
   const extractTextFromPage = async (page, pageNumber) => {
     const textContent = await page.getTextContent();
-    const pdfText = buildReadableText(textContent.items);
+    const tolerance = parseFloat(ui.toleranceInput.value) || 4;
+    const pdfText = buildReadableText(textContent.items, tolerance);
     if (pdfText) {
       return { text: pdfText, source: 'pdf' };
     }
@@ -200,7 +216,8 @@
     }
 
     statusView.set(`[OCR] 渲染第 ${pageNumber} 頁影像...`, 'loading');
-    const canvas = await renderPageToCanvas(page, pdfConfig.ocrRenderScale);
+    const scale = parseFloat(ui.ocrScaleInput.value) || 3;
+    const canvas = await renderPageToCanvas(page, scale);
     enhanceCanvasForOcr(canvas);
     const ocrText = await runOcr(canvas, pageNumber);
     canvas.width = 0;
@@ -267,6 +284,7 @@
           source: extraction.source,
           ocrEnabled: ui.ocrToggle.checked
         });
+        page.cleanup();
       }
 
       statusView.set(`完成：共 ${pdf.numPages} 頁`, 'success');
@@ -279,9 +297,31 @@
     }
   };
 
+  const handleExport = () => {
+    if (state.extractedTextBlocks.length === 0) return;
+    const allText = state.extractedTextBlocks.join('\n');
+    const blob = new Blob([allText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (state.selectedFile ? state.selectedFile.name.replace(/\.[^/.]+$/, "") : "extracted") + '_result.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   ui.fileInput.addEventListener('change', handleFileSelection);
   ui.processBtn.addEventListener('click', handleProcess);
   ui.clearBtn.addEventListener('click', resetUi);
+  ui.exportBtn.addEventListener('click', handleExport);
+  ui.toleranceInput.addEventListener('input', (e) => {
+    ui.toleranceVal.textContent = e.target.value;
+  });
+  ui.ocrScaleInput.addEventListener('input', (e) => {
+    ui.ocrScaleVal.textContent = e.target.value;
+  });
+  ui.ocrThresholdInput.addEventListener('input', (e) => {
+    ui.ocrThresholdVal.textContent = e.target.value;
+  });
 
   resetUi();
 })();

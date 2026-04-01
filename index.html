@@ -39,10 +39,23 @@
         <input type="checkbox" id="enable-ocr" checked />
         <label for="enable-ocr">當此頁沒有可擷取文字時，自動使用影像 OCR（需網路，速度較慢）</label>
       </div>
+      <div class="setting-item">
+        <label for="tolerance-input" style="display:inline; margin-bottom:0; font-weight:normal;">Y 軸斷行靈敏度 (<span id="tolerance-val">4</span>)：</label>
+        <input type="range" id="tolerance-input" min="1" max="10" step="1" value="4" title="數值越小，越容易斷行">
+      </div>
+      <div class="setting-item">
+        <label for="ocr-scale-input" style="display:inline; margin-bottom:0; font-weight:normal;">OCR 解析度倍率 (<span id="ocr-scale-val">3</span>x)：</label>
+        <input type="range" id="ocr-scale-input" min="2" max="6" step="0.5" value="3" title="倍率越高影像越清晰，但處理速度相對變慢">
+      </div>
+      <div class="setting-item">
+        <label for="ocr-threshold-input" style="display:inline; margin-bottom:0; font-weight:normal;"> OCR 黑白二值化門檻 (<span id="ocr-threshold-val">175</span>)：</label>
+        <input type="range" id="ocr-threshold-input" min="50" max="250" step="5" value="175" title="掃描字體太黑/髒污時調高；字體太淡/斷線時調低">
+      </div>
       <div id="status" class="status">尚未選擇檔案</div>
       <div class="actions">
         <button id="process-btn" type="button" disabled>開始上傳並解析</button>
         <button id="clear-btn" type="button" class="secondary">清除結果</button>
+        <button id="export-btn" type="button" class="export-mode" disabled>匯出 TXT</button>
       </div>
     </section>
 
